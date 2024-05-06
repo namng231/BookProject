@@ -1,0 +1,159 @@
+﻿@model BookManagement.Models.Book
+
+@{
+    ViewData["Title"] = "Edit";
+    var btnName = new
+    {
+        Create = "btn-create",
+        Show = "btn-show",
+        Update = "btn-update",
+        Delete = "btn-delete",
+    };
+}
+
+<h1>Edit</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <h4>Book</h4>
+        <hr />
+        <form asp-action="Edit" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <input type="hidden" asp-for="Thumbnail" />
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Field" class="control-label"></label>
+                <input asp-for="Field" class="form-control" />
+                <span asp-validation-for="Field" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Author" class="control-label"></label>
+                <input asp-for="Author" class="form-control" />
+                <span asp-validation-for="Author" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Thumbnail</label>
+                <input type="file" name="file" class="form-control" />
+            </div>
+            <div class="form-group mt-2">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+    <div class="col-md-8">
+        <h4>Pages</h4>
+        <hr />
+        <form onsubmit="handleFormPageSubmit(event)">
+            <div class="input-group gap-1">
+                <input type="hidden" name="bookId" value="@Model.Id" />
+                <input id="input-page-number" name="pageNumber" type="text" class="form-control" placeholder="Page number">
+                <input id="input-page-file" name="file" type="file" class="form-control">
+                <button class="btn btn-outline-primary" name="@btnName.Create">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" name="@btnName.Show" data-bs-toggle="modal" data-bs-target="#modalShowPage">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-outline-secondary" name="@btnName.Update">
+                    <i class="bi bi-pen"></i>
+                </button>
+                <button class="btn btn-outline-danger" name="@btnName.Delete">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>            
+        </form>
+        <div class="mt-2 d-flex gap-1 flex-wrap" id="page-container"></div>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        await Html.RenderPartialAsync("_ModalShowPagePartial");
+    }
+    <script>
+        let currentBook = {
+            pages: []
+        }
+        let currentPageId, currentPageEl
+        renderPages()
+
+        const inputPageNumber = document.querySelector('#input-page-number')
+
+        function updateFormBtn() {
+            const btnShow = document.querySelector('[name=@btnName.Show]')
+            const btnUpdate = document.querySelector('[name=@btnName.Update]')
+            const btnDelete = document.querySelector('[name=@btnName.Delete]')
+
+            if (currentPageId) btnShow.disabled = btnUpdate.disabled = btnDelete.disabled = false
+            else btnShow.disabled = btnUpdate.disabled = btnDelete.disabled = true
+        }
+
+        async function renderPages() {
+            const pageContainer = document.querySelector('#page-container')
+            const rs = await app.page.getBookWithPages('@Model.Id')
+            if (rs) currentBook = rs
+
+            const pagesHtml = currentBook.pages.map(page =>
+                `<button class="btn btn-outline-secondary" onClick="handleBtnPageClick(this)" data-id="${page.id}">
+                                    ${page.pageNumber}
+                                </button>`).join('')
+            pageContainer.innerHTML = pagesHtml
+
+            currentPageId = currentPageEl = undefined
+            inputPageNumber.value = (currentBook.pages.at(-1)?.pageNumber || 0) + 1
+            updateFormBtn()
+        }
+
+        function handleBtnPageClick(el) {
+            const pageId = el.dataset.id
+            const page = currentBook.pages.find(page => page.id === pageId)
+            if (!currentPageId) {
+                el.classList.add('active')
+                currentPageId = pageId
+                currentPageEl = el
+                inputPageNumber.value = page.pageNumber
+            } else if (currentPageId === pageId) {
+                currentPageEl.classList.remove('active')
+                currentPageId = currentPageEl = undefined
+                inputPageNumber.value = (currentBook.pages.at(-1)?.pageNumber || 0) + 1
+            } else {
+                currentPageEl.classList.remove('active')
+                el.classList.add('active')
+                currentPageId = pageId
+                currentPageEl = el
+                inputPageNumber.value = page.pageNumber
+            }
+            updateFormBtn()
+        }
+
+        async function handleFormPageSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target)
+            switch (e.submitter.name) {
+                case '@btnName.Create':
+                    await app.page.create(formData)
+                    break;
+                case '@btnName.Update':
+                    await app.page.update(currentPageId, formData)
+                    break;
+                case '@btnName.Delete':
+                    await app.page.delete(currentPageId)
+                    break;
+                default:
+                    return;
+            }
+            renderPages()
+        }
+    </script>
+}

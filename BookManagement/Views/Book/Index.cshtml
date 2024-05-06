@@ -1,0 +1,74 @@
+﻿@model BookManagement.Dtos.PagingListDto<BookManagement.Models.Book>
+
+@{
+    ViewData["Title"] = "Index";
+    var pageSizeOptions = new[] { 2, 5, 10, 20 };
+}
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<form method="get">
+    <div class="d-flex justify-content-between">
+        <select class="form-select w-auto" name="size" onchange="this.form.submit()">
+            @foreach (var item in pageSizeOptions)
+            {
+                <option value="@item" selected="@(item == Model.PageSize ? "selected" : null)">@item</option>
+            }
+        </select>
+        <input type="text" class="form-control w-auto" name="q" placeholder="Search...">
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model[0].Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model[0].Field)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model[0].Author)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model[0].CreatedDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model[0].UpdatedDate)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Field)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Author)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.CreatedDate)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.UpdatedDate)
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                    <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@{
+    await Html.RenderPartialAsync("_PaginationPartial", Model);
+}

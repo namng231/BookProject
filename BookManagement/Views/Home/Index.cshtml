@@ -1,0 +1,94 @@
+﻿@model BookManagement.Dtos.PagingListDto<BookManagement.Models.Book>
+
+@{
+    var pageSizeOptions = new[] { 2, 5, 10, 20 };
+}
+
+@section Styles {
+    <style>
+        .book-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        @@media screen and (min-width: 992px) {
+            .book-list {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        .book-item {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            text-align: center;
+            transition: box-shadow ease .2s;
+        }
+
+        .book-item:hover {
+            cursor: pointer;
+            box-shadow: 0 0 5px 0 #ccc;
+        }
+
+        .book-item img {
+            max-width: 100%;
+            height: 230px;
+            object-fit: cover;
+        }
+    </style>
+}
+
+<form method="get">
+    <div class="d-flex justify-content-between">
+        <select class="form-select w-auto" name="size" onchange="this.form.submit()">
+            @foreach (var item in pageSizeOptions)
+            {
+                <option value="@item" selected="@(item == Model.PageSize ? "selected" : null)">@item</option>
+            }
+        </select>
+        <input type="text" class="form-control w-auto" name="q" placeholder="Search...">
+    </div>
+</form>
+
+<div class="book-list my-3">
+    @foreach (var item in Model)
+    {
+        var thumbnail = item.Thumbnail ?? "images/default-document-img.png";
+
+        <div class="book-item" onclick="handleBookClick('@item.Id')">
+            <img src="~/@thumbnail" alt="err" />
+            <p class="mt-2">@item.Name</p>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_PaginationPartial", Model);
+        await Html.RenderPartialAsync("_ModalShowPagePartial");
+    }
+    <script>
+        let currentBook = {
+            pages: []
+        }
+        let currentPageId
+
+        async function handleBookClick(bookId) {
+            if (modalShowPageEl) {
+                const modalShowPage = bootstrap.Modal.getOrCreateInstance(modalShowPageEl)
+                const rs = await app.page.getBookWithPages(bookId)
+                if (rs) {
+                    currentBook = rs
+                    currentPageId = currentBook.pages[0]?.id
+                    if ('@ViewData["Title"]' == 'Bookmark') {
+                        const userBookmarks = await app.page.getUserBookmarks()
+                        const bookmarkedPage = userBookmarks.find(x => x.bookId === bookId)
+                        if (bookmarkedPage) currentPageId = bookmarkedPage.id
+                    }
+                    modalShowPage.show();
+                }
+            }
+        }
+    </script>
+}

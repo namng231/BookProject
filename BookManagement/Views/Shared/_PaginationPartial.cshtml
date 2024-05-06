@@ -1,0 +1,32 @@
+﻿@model BookManagement.Dtos.PagingListDto<BookManagement.Models.Book>
+
+@{
+    var searchQuery = Context.Request.Query["q"];
+    var sizeQuery = Context.Request.Query["size"];
+    var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+    var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+}
+
+<nav aria-label="Document pages">
+    <ul class="pagination justify-content-center">
+        <li class="page-item @prevDisabled">
+            <a asp-route-page="1" asp-route-q="@searchQuery" asp-route-size="@sizeQuery" class="page-link" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        @for (int page = Model.PageIndex - 2; page <= Model.PageIndex + 2; page++)
+        {
+            if (page >= 1 && page <= Model.TotalPages)
+            {
+                <li class="page-item @(page == Model.PageIndex ? "active" : "")">
+                    <a class="page-link" asp-route-page="@(page)" asp-route-q="@searchQuery" asp-route-size="@sizeQuery">@(page)</a>
+                </li>
+            }
+        }
+        <li class="page-item @nextDisabled">
+            <a asp-route-page="@Model.TotalPages" asp-route-q="@searchQuery" asp-route-size="@sizeQuery" class="page-link" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+    </ul>
+</nav>

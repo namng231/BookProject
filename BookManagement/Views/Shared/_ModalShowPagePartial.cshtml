@@ -1,0 +1,111 @@
+﻿<link rel="stylesheet" href="https://unpkg.com/excel-viewer@1.0.0/dist/excel/xspreadsheet.css">
+
+<div class="modal fade" id="modalShowPage" tabindex="-1" aria-labelledby="modalShowPageLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalShowPageLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group gap-1 justify-content-center">
+                    <button id="btnPrevPage" class="btn btn-outline-secondary" onclick="changeInputSelectPage(selectPageEl.selectedIndex-1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <select id="selectPage" class="form-select" style="flex: none; width: fit-content">
+                    </select>
+                    <button id="btnBookmark" class="btn btn-outline-primary">
+                        <i class="bi bi-bookmark"></i>
+                    </button>
+                    <button id="btnNextPage" class="btn btn-outline-secondary" onclick="changeInputSelectPage(selectPageEl.selectedIndex+1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div id="pageFileView"
+                     class="mt-2 overflow-auto"
+                     style="height: 70vh; border: 1px solid #ccc">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/excel-viewer@1.0.0/dist/excel/xspreadsheet.js"></script>
+<script src="https://unpkg.com/excel-viewer@1.0.0/dist/excel/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/excel-viewer@1.0.0/dist/excel-viewer.js"></script>
+<script>
+    const modalShowPageEl = document.querySelector('#modalShowPage')
+
+    const modalShowPageLabel = document.querySelector('#modalShowPageLabel')
+    const btnPrevPage = document.querySelector('#btnPrevPage')
+    const btnNextPage = document.querySelector('#btnNextPage')
+    const btnBookmark = document.querySelector('#btnBookmark')
+    const selectPageEl = document.querySelector('#selectPage')
+
+    async function updateModalBtn() {
+        btnPrevPage.disabled = selectPageEl.selectedIndex <= 0
+        btnNextPage.disabled = selectPageEl.selectedIndex >= selectPageEl.length - 1
+
+        if (!currentUser) return
+        const userBookmarks = await app.page.getUserBookmarks()
+        const isBookmarked = userBookmarks.some(x => x.id === selectPageEl.value)
+        if (isBookmarked) btnBookmark.classList.add('active')
+        else btnBookmark.classList.remove('active')
+    }
+
+    function renderInputSelectPage(pageId) {
+        selectPageEl.innerHTML = currentBook.pages.map(page => `
+                <option value="${page.id}" ${page.id === pageId ? 'selected' : ''}>
+                    Page ${page.pageNumber}
+                </option>`).join('')
+    }
+
+    function renderPageContent(pageId) {
+        const page = currentBook.pages.find(page => page.id === pageId)
+        const ext = page.filePath.split('.').pop()
+        switch (ext) {
+            case 'xlsx':
+            case 'xls':
+            case 'csv':
+                new ExcelViewer('#pageFileView', `/${page.filePath}`, { themeBtn: false })
+                break
+            default:
+                const pageFileView = document.querySelector('#pageFileView')
+                pageFileView.innerHTML = `<iframe class="w-100 h-100" src="/${page.filePath}"></iframe>`
+        }
+        updateModalBtn()
+    }
+
+    modalShowPageEl.addEventListener('show.bs.modal', () => {
+        modalShowPageLabel.textContent = currentBook.name || '???'
+        if (currentPageId) {
+            renderInputSelectPage(currentPageId)
+            renderPageContent(currentPageId)
+        }
+    })
+
+    selectPageEl.onchange = function () {
+        renderPageContent(this.value)
+    }
+
+    function changeInputSelectPage(index) {
+        if (index < 0 || index >= selectPageEl.length) return
+        selectPageEl.selectedIndex = index
+        selectPageEl.dispatchEvent(new Event('change'))
+    }
+
+    btnBookmark.onclick = async function () {
+        if (!currentUser) return window.location = '@Url.Action("Login", "Auth", new { returnUrl = Url.Action() })'
+        await app.page.bookmark(selectPageEl.value)
+        updateModalBtn()
+    }
+
+    bookHubConnection.on('BookUpdated', async (bookId) => {
+        if (currentBook.id != bookId) return
+        currentBook = await app.page.getBookWithPages(bookId)
+        const isCurrentPageExist = currentBook.pages.some(x => x.id === selectPageEl.value)
+        const currentPageId = isCurrentPageExist ? selectPageEl.value : currentBook.pages[0]?.id
+        renderInputSelectPage(currentPageId)
+        renderPageContent(currentPageId)
+    })
+</script>
